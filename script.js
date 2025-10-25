@@ -1,8 +1,19 @@
+// Import Firebase SDK functions
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+// Paste your config here 👇
 const firebaseConfig = {
-  apiKey: "AIzaSyXXXXXXX",
-  authDomain: "personality-rating.firebaseapp.com",
-  projectId: "personality-rating",
-  storageBucket: "personality-rating.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:abcdef123456"
+  apiKey: "AIzaSy...yourKey...",
+  authDomain: "your-app.firebaseapp.com",
+  projectId: "your-app",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef123456"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export { db };
