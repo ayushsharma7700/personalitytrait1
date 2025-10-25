@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personality Traits Rating</title>
+<style>
+/* same CSS as before */
+body {
+    font-family: Poppins, sans-serif;
+    background: linear-gradient(135deg, #d9f0ff, #f8f9fa);
+    color: #333;
+    text-align: center;
+    padding: 20px;
+}
+h1 { color: #00509e; margin-bottom: 10px; }
+select, button, input {
+    padding: 10px; border-radius: 8px; border: 1px solid #aaa;
+    margin: 10px; font-size: 16px;
+}
+.traits { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 30px 0; }
+.trait-card { background: white; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 15px; transition: 0.3s; }
+.trait-card h3 { margin-bottom: 8px; }
+.yesno button { margin: 5px; padding: 6px 12px; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: bold; transition: 0.3s; }
+.yes-btn { background: #28a745; }
+.no-btn { background: #dc3545; }
+.yes-btn.active, .no-btn.active { transform: scale(1.1); opacity: 1; }
+.yes-btn:not(.active), .no-btn:not(.active) { opacity: 0.5; }
+.stars input { display: none; }
+.stars label { font-size: 30px; color: gray; cursor: pointer; }
+.stars input:checked ~ label { color: gold; }
+.hidden { display: none; }
+.result, .ratings-list { margin-top: 30px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); width: 60%; margin-left: auto; margin-right: auto; }
+.ratings-list p { border-bottom: 1px solid #eee; padding: 5px; }
+</style>
+</head>
+<body>
+
+<h1>Personality Traits Rating</h1>
+
+<div id="loginSection">
+    <h2>Enter Your Name to Start</h2>
+    <input type="text" id="raterName" placeholder="Your name...">
+    <button onclick="startRating()">Continue</button>
+</div>
+
+<div id="ratingSection" class="hidden">
+    <h2 id="welcomeText"></h2>
+    <p>Choose who you want to rate:</p>
+    <select id="targetSelect">
+        <option value="">-- Choose a name --</option>
+        <option>Ayush</option>
+        <option>Kiran</option>
+        <option>Aditya</option>
+        <option>Ishu</option>
+        <option>Antara</option>
+        <option>Neha</option>
+        <option>Obaid</option>
+    </select>
+
+    <div class="traits" id="traitsContainer"></div>
+
+    <div class="rating">
+        <h3>Give a star rating:</h3>
+        <div class="stars">
+            <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+            <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+            <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+            <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+            <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+        </div>
+        <button onclick="submitData()">Submit Rating</button>
+    </div>
+
+    <div class="result" id="result"></div>
+
+    <hr>
+    <button onclick="viewWhoRated()">👀 View Who Rated You</button>
+    <div class="ratings-list hidden" id="ratingsList"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// 🔥 Your Firebase Config Here:
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ===== MAIN APP LOGIC =====
+const traits = ["Kind","Helpful","Honest","Creative","Loyal","Caring","Hardworking","Generous","Friendly","Confident","Responsible","Respectful","Polite","Patient","Courageous","Selfish","Arrogant","Lazy","Jealous","Rude","Dishonest","Impulsive","Pessimistic","Aggressive","Insecure","Overconfident","Greedy","Forgiving","Optimistic","Calm"];
+let chosen = {};
+let raterName = "";
+
+window.startRating = () => {
+  const name = document.getElementById('raterName').value.trim();
+  if (!name) return alert("Please enter your name!");
+  raterName = name;
+  document.getElementById('loginSection').classList.add('hidden');
+  document.getElementById('ratingSection').classList.remove('hidden');
+  document.getElementById('welcomeText').innerText = `Welcome, ${raterName}!`;
+  displayTraits();
+};
+
+function displayTraits() {
+  const container = document.getElementById('traitsContainer');
+  container.innerHTML = '';
+  traits.forEach(trait => {
+    const card = document.createElement('div');
+    card.className = 'trait-card';
+    card.innerHTML = `
+      <h3>${trait}</h3>
+      <div class="yesno">
+        <button class="yes-btn" data-trait="${trait}" data-choice="Yes">Yes</button>
+        <button class="no-btn" data-trait="${trait}" data-choice="No">No</button>
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.matches('.yes-btn, .no-btn')) {
+    const trait = e.target.dataset.trait;
+    const choice = e.target.dataset.choice;
+    chosen[trait] = choice;
+    const parent = e.target.parentElement;
+    parent.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+  }
+});
+
+window.submitData = async () => {
+  const target = document.getElementById('targetSelect').value;
+  const rating = document.querySelector('input[name="rating"]:checked');
+  if (!target) return alert("Please choose a person to rate!");
+  if (!rating) return alert("Please select a star rating!");
+
+  const yesCount = Object.values(chosen).filter(v => v === "Yes").length;
+
+  const data = {
+    from: raterName,
+    to: target,
+    traits: chosen,
+    rating: rating.value,
+    yesCount,
+    date: new Date().toLocaleString()
+  };
+
+  try {
+    await addDoc(collection(db, "ratings"), data);
+    document.getElementById('result').innerHTML = `<p>✅ You rated ${target} with ${yesCount} positive traits and ${rating.value} stars!</p>`;
+    chosen = {};
+  } catch (e) {
+    alert("Error saving rating!");
+    console.error(e);
+  }
+};
+
+window.viewWhoRated = async () => {
+  const listDiv = document.getElementById('ratingsList');
+  listDiv.classList.remove('hidden');
+  listDiv.innerHTML = "<p>Loading...</p>";
+
+  const q = query(collection(db, "ratings"), where("to", "==", raterName));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    listDiv.innerHTML = "<p>No one has rated you yet 😔</p>";
+    return;
+  }
+
+  listDiv.innerHTML = `<h3>Who Rated You:</h3>`;
+  querySnapshot.forEach((doc) => {
+    const r = doc.data();
+    listDiv.innerHTML += `<p>⭐ <b>${r.from}</b> rated you ${r.rating} stars with ${r.yesCount} positive traits on ${r.date}</p>`;
+  });
+};
+</script>
+
+</body>
+</html>
